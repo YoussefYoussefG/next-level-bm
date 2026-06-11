@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-build-test:
+    name: Lint, Build & Test
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: bm_test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://testuser:testpassword@localhost:5432/bm_test_db?schema=public
+      JWT_SECRET: ci-test-secret-key-that-is-at-least-32-characters
+      JWT_EXPIRES_IN: 1h
+      BCRYPT_ROUNDS: 4
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run Prisma Migrations
+        run: npx prisma migrate deploy
+
+      - name: Build TypeScript
+        run: npm run build
+
+      - name: Run Tests
+        run: npm test -- --runInBand --forceExit
+
+      - name: Run Tests with Coverage
+        run: npm test -- --runInBand --forceExit --coverage
+        continue-on-error: true

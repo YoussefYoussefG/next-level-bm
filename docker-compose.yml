@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  # ─── PostgreSQL Database ────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: bm-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bmuser
+      POSTGRES_PASSWORD: bmpassword
+      POSTGRES_DB: bm_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bmuser -d bm_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── BM API Service ────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bm-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://bmuser:bmpassword@postgres:5432/bm_db?schema=public
+      PORT: 3000
+      JWT_SECRET: change-this-to-a-very-long-random-secret-key
+      JWT_EXPIRES_IN: 1h
+      JWT_REFRESH_EXPIRES_IN: 7d
+      BCRYPT_ROUNDS: 12
+      NODE_ENV: production
+      CORS_ORIGIN: "*"
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

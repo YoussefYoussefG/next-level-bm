@@ -37,19 +37,29 @@ model User {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
 }
 
 model Product {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   name        String
   description String?
   price       Float
-  stock       Int      @default(0)
+  stock       Int       @default(0)
+  deletedAt   DateTime? // Soft-delete support
   
   orderItems  OrderItem[]
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([name])
+  @@index([price])
+  @@index([deletedAt])
+  @@map("products")
 }
 
 model Order {
@@ -64,6 +74,11 @@ model Order {
   
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
 }
 
 model OrderItem {
@@ -78,4 +93,8 @@ model OrderItem {
   
   productId String
   product   Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
 }
